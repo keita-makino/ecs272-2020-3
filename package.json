@@ -43,6 +43,7 @@
     "@typescript-eslint/parser": "^2.18.0",
     "apollo-boost": "^0.4.7",
     "d3": "^5.15.0",
+    "deck.gl": "^8.0.11",
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-prettier": "^3.1.2",
     "framer-motion": "^1.8.3",
@@ -50,6 +51,9 @@
     "husky": "^4.2.1",
     "license-checker": "^25.0.1",
     "lint-staged": "^10.0.3",
-    "prettier": "^1.19.1"
+    "nesthydrationjs": "^2.0.0",
+    "prettier": "^1.19.1",
+    "react-vis": "^1.11.7",
+    "react-vis-types": "0.0.6"
   }
 }
