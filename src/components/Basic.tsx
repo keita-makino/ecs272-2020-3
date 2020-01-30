@@ -1,100 +1,131 @@
 import React, { useState } from "react";
-import { XYPlot, LineSeries, Sunburst } from "react-vis";
-import data from "../data/data.json";
-import * as NestHydrationJS from "nesthydrationjs";
+import DeckGL from "@deck.gl/react";
+import { HexagonLayer } from "@deck.gl/aggregation-layers";
+import StaticMap from "react-map-gl";
+import { useQuery } from "@apollo/react-hooks";
+import { gql } from "apollo-boost";
+import rawData from "../data/data.json";
+import lightingEffect from "./lightingEffect";
+import { makeStyles, Box } from "@material-ui/core";
 
 type Props = {};
 
+const query = gql`
+  query @client {
+    x {
+      value
+      __typename
+    }
+    y {
+      value
+      __typename
+    }
+  }
+`;
+
+const material = {
+  ambient: 0.4,
+  diffuse: 0.8,
+  shininess: 40,
+  specularColor: [32, 48, 64]
+};
+
+const colorRange = [
+  [1, 152, 189],
+  [73, 227, 206],
+  [216, 254, 181],
+  [254, 237, 177],
+  [254, 173, 84],
+  [209, 55, 78]
+];
+
+const useStyles = makeStyles({
+  map: {
+    position: "relative"
+  }
+});
+
 const Basic: React.FC<Props> = (props: Props) => {
-  const [tooltip, setTooltip] = useState("");
+  const classes = useStyles();
+  const MAPBOX_TOKEN =
+    "pk.eyJ1Ijoia2VtYWtpbm8iLCJhIjoiY2s1aHJkeWVpMDZzbDNubzltem80MGdnZSJ9.Mn_8DItICHFJyiPJ2rP_0Q";
 
-  const levels = ["Category", "DayOfWeek"];
+  const [state, setState] = useState({
+    hoveredObject: undefined,
+    pointerX: 0,
+    pointerY: 0
+  });
 
-  const nestedData = NestHydrationJS().nest(
-    data.map(item => ({
-      _title: item.Category,
-      _color: "#12939A",
-      _children__title: item.DayOfWeek,
-      _children__color: "#2c3fc9",
-      _children__children__title: item.IncidntNum,
-      _children__children__size: 1,
-      _children__children__treeEnd: true
-    }))
-  );
+  const { data } = useQuery(query);
+  const plotData = rawData.map(item => ({ lat: item.Y, lng: item.X }));
 
-  const getFreqency = (item: any) => {
-    return item.children.reduce(
-      (prev: number, curr: any) => prev + curr.size,
-      0
-    );
+  const [view, setView] = React.useState({
+    latitude: 37.74,
+    longitude: -122.42,
+    zoom: 12,
+    pitch: 60,
+    bearing: -30
+  });
+
+  const onHover = ({ object, x, y }: any) => {
+    if (object === null) setState({ ...state, hoveredObject: undefined });
+    else
+      setState({
+        hoveredObject: object,
+        pointerX: x,
+        pointerY: y
+      });
   };
 
-  const aggregate = (item: any) => {
-    console.log(item);
-    let r;
-    if (item[0].children[0].size !== undefined) {
-      if (item[0].children[0].treeEnd === true) {
-        r = item.map((item2: any) => ({
-          title: item2.title,
-          color: getColor(item2.title),
-          size: getFreqency(item2)
-        }));
-      } else {
-        r = item.map((item2: any) => ({
-          title: item2.title,
-          children: item2.children,
-          color: getColor(item2.title),
-          size: getFreqency(item2)
-        }));
-      }
-    } else {
-      r = item.map((item2: any) => ({
-        title: item2.title,
-        children: aggregate(item2.children),
-        color: getColor(item2.title)
-      }));
-    }
-    console.log(r);
-    return r;
-  };
-
-  const getColor = (str: string) => {
-    if (str.length < 3) {
-      const rArray = Array(3)
-        .fill(0)
-        .map(item => Math.floor(Math.random() * 255).toString(16));
-      return `#${rArray.join("")}`;
-    } else {
-      const sStr = str
-        .substring(0, 3)
-        .split("")
-        .map(item => item.charCodeAt(0).toString(16));
-      console.log(`#${sStr.join("")}`);
-      return `#${sStr.join("")}`;
-    }
-  };
-
-  let freqData = nestedData;
-  while (freqData[0].size === undefined) freqData = aggregate(freqData);
-  console.log(freqData);
-
-  const plotData = {
-    title: "root",
-    size: freqData.reduce((prev: number, curr: any) => prev + curr.size, 0),
-    children: freqData
-  };
-  console.log(plotData);
+  const hexagon = new HexagonLayer({
+    id: "heatmap",
+    colorRange,
+    coverage: 0.9,
+    data: plotData,
+    pickable: true,
+    elevationRange: [0, 250],
+    elevationScale: 10,
+    extruded: true,
+    getPosition: (obj: { lng: any; lat: any }) => [obj.lng, obj.lat],
+    radius: 100,
+    upperPercentile: 100,
+    material: material,
+    onHover: onHover
+  });
 
   return (
-    <>
-      <Sunburst
-        animation
-        hideRootNode
-        data={plotData}
-        height={1280}
-        width={720}
-      />
-    </>
+    <Box className={classes.map}>
+      <DeckGL
+        viewState={view}
+        width={1280}
+        height={720}
+        layers={[hexagon]}
+        effects={[lightingEffect]}
+        controller
+        onViewStateChange={({ viewState }) => setView(viewState)}
+      >
+        <StaticMap
+          mapboxApiAccessToken={MAPBOX_TOKEN}
+          width={960}
+          height={600}
+          mapStyle={"mapbox://styles/mapbox/dark-v9"}
+        />
+        {state.hoveredObject !== undefined ? (
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 1,
+              left: state.pointerX + 20,
+              top: state.pointerY,
+              padding: "0.5rem",
+              backgroundColor: "#FFFFFF"
+            }}
+          >
+            value: {(state.hoveredObject! as any).elevationValue}
+          </div>
+        ) : null}
+      </DeckGL>
+    </Box>
   );
 };
 
