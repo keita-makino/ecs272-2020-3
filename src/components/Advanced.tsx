@@ -38,6 +38,8 @@ const Advanced: React.FC<Props> = (props: Props) => {
   const [highlights, setHighlights] = useState([] as string[]);
 
   const { data } = useQuery(query);
+  const x = data.x.value;
+  const y = data.y.value;
   const targetData =
     data.xt.value !== "" && data.zt.value !== ""
       ? props.data.filter(
@@ -46,37 +48,12 @@ const Advanced: React.FC<Props> = (props: Props) => {
         )
       : props.data;
 
-  const nestedData = NestHydrationJS().nest(
-    targetData.map((item: any) => {
-      if (data.x.value === "") {
-        return undefined;
-      }
-      let r;
-      if (data.y.value === "") {
-        r = {
-          _id: item[data.x.value],
-          _category: data.x.value,
-          _children__id: item.IncidntNum,
-          _children__size: 1,
-          _children__treeEnd: true
-        };
-      } else {
-        r = {
-          _id: item[data.x.value],
-          _category: data.x.value,
-          _children__id: item[data.y.value],
-          _children__category: data.y.value,
-          _children__children__id: item.IncidntNum,
-          _children__children__size: 1,
-          _children__children__treeEnd: true
-        };
-      }
-      return r;
-    })
-  );
+  let nestedData = null;
 
-  console.log(nestedData);
-
+  const getColor = (str: string | number) => {
+    const hue = (str.toString().charCodeAt(0) * 147) % 360;
+    return `hsl(${hue}, 75%, 60%)`;
+  };
   const getFreqency = (item: any) => {
     return item.children.reduce(
       (prev: number, curr: any) => prev + curr.size,
@@ -84,52 +61,113 @@ const Advanced: React.FC<Props> = (props: Props) => {
     );
   };
 
-  const aggregate = (item: any) => {
-    if (item === null) {
-      return;
-    }
-    const hasGrandChildren = item[0].children[0].size !== undefined;
-    const isTreeEnd = item[0].children[0].treeEnd;
+  if (x !== "") {
+    if (y !== "") {
+      nestedData = targetData
+        .map(item => ({ x: item[x], y: item[y] }))
+        .reduce((prev: any, curr: any, index: any) => {
+          if (prev.map((item: any) => item.title).includes(curr.x)) {
+            if (
+              prev
+                .filter((item: any) => item.title === curr.x)[0]
+                .children.map((item: any) => item.title)
+                .includes(curr.y)
+            ) {
+              prev
+                .filter((item: any) => item.title === curr.x)[0]
+                .children.filter(
+                  (item: any) => item.title === curr.y
+                )[0].size += 1;
+            } else {
+              prev.filter((item: any) => item.title === curr.x)[0].children = [
+                ...prev.filter((item: any) => item.title === curr.x)[0]
+                  .children,
+                {
+                  title: curr.y,
+                  category: y,
+                  size: 1,
+                  color: getColor(curr.y),
+                  style: {
+                    fillOpacity: highlights.includes(curr.y) ? 1 : 0.25
+                  }
+                }
+              ];
+            }
+          } else {
+            prev = [
+              ...prev,
+              {
+                title: curr.x,
+                category: x,
+                color: getColor(curr.x),
+                style: {
+                  fillOpacity: highlights.includes(curr.x) ? 1 : 0.25
+                },
+                children: [
+                  {
+                    title: curr.y,
+                    category: y,
+                    size: 1,
+                    color: getColor(curr.y),
+                    style: {
+                      fillOpacity: highlights.includes(curr.y) ? 1 : 0.25
+                    }
+                  }
+                ]
+              }
+            ];
+          }
+          return prev;
+        }, []);
 
-    let r = item.map((item2: any) => ({
-      id: item2.id,
-      category: item2.category,
-      children: isTreeEnd
-        ? undefined
-        : hasGrandChildren
-        ? item2.children
-        : aggregate(item2.children),
-      color: getColor(item2.id),
-      size: hasGrandChildren && isTreeEnd ? getFreqency(item2) : undefined,
-      style: {
-        fillOpacity: highlights.includes(item2.id) ? 1 : 0.25
+      nestedData.sort((a: any, b: any) =>
+        getFreqency(a) > getFreqency(b) ? -1 : 1
+      );
+      if (nestedData.length > 25) {
+        nestedData = nestedData.slice(0, 25);
       }
-    }));
-
-    console.log(r);
-    if (r[0].size !== undefined) {
-      r = r.sort((a: any, b: any) => (a.size > b.size ? -1 : 1));
+      nestedData.map((item: any) => {
+        const array = item.children.sort((a: any, b: any) =>
+          a.size > b.size ? -1 : 1
+        );
+        item.children = array.length > 25 ? array.slice(0, 25) : array;
+      });
+    } else {
+      nestedData = targetData
+        .map(item => ({ x: item[x], y: item[y] }))
+        .reduce((prev: any, curr: any, index: any) => {
+          if (prev.map((item: any) => item.title).includes(curr.x)) {
+            prev.filter((item: any) => item.title === curr.x)[0].size += 1;
+          } else {
+            prev = [
+              ...prev,
+              {
+                title: curr.x,
+                category: x,
+                size: 1,
+                color: getColor(curr.x),
+                style: {
+                  fillOpacity: highlights.includes(curr.x) ? 1 : 0.25
+                }
+              }
+            ];
+          }
+          return prev;
+        }, []);
+      nestedData.sort((a: any, b: any) => (a.size > b.size ? -1 : 1));
+      if (nestedData.length > 25) {
+        nestedData = nestedData.slice(0, 25);
+      }
     }
+  }
 
-    if (r.length > 25) {
-      r = r.slice(0, 25);
-    }
-
-    return r;
-  };
-
-  const getColor = (str: string | number) => {
-    const hue = (str.toString().charCodeAt(0) * 255) % 360;
-    return `hsl(${hue}, 75%, 60%)`;
-  };
-
-  let freqData = aggregate(nestedData);
+  let freqData = nestedData;
   // while (freqData[0].size === undefined) freqData = aggregate(freqData);
   const plotData = {
     title: "root",
     category: "root",
     size:
-      data.y.value !== ""
+      y !== ""
         ? freqData.reduce((prev: number, curr: any) => prev + curr.size, 0)
         : undefined,
     children: freqData,
@@ -144,23 +182,33 @@ const Advanced: React.FC<Props> = (props: Props) => {
     } else {
       if (node.data) {
         return [
-          `> ${node.data.category}<${node.data.id}>`,
+          `> ${node.data.category}<${node.data.title}>`,
           ...getTooltip(node.parent)
         ];
       } else {
-        return [`> ${node.category}<${node.id}>`, ...getTooltip(node.parent)];
+        return [
+          `> ${node.category}<${node.title}>`,
+          ...getTooltip(node.parent)
+        ];
       }
     }
   };
 
   useEffect(() => {
-    if (data.x.value === "" && data.y.value === "") setTooltip(["root"]);
-  }, [data.x.value, data.y.value]);
+    if (x === "" && y === "") setTooltip(["root"]);
+  }, [x, y]);
 
   const onValueMouseOver = (node: any) => {
     const path = getTooltip(node);
     setNode(node);
     setTooltip(path.reverse());
+    console.log(
+      path
+        .join("")
+        .split("> ")
+        .slice(1)
+        .map(item => item.replace(/.*<(.*)>/g, "$1"))
+    );
     setHighlights(
       path
         .join("")
@@ -176,14 +224,12 @@ const Advanced: React.FC<Props> = (props: Props) => {
     setHighlights([]);
   };
 
-  console.log(node);
-
   return (
     <div ref={ref}>
       <Grid container>
         <Sunburst
           animation
-          hideRootNode={data.x.value !== ""}
+          hideRootNode={x !== ""}
           data={plotData}
           width={1280}
           height={720}
@@ -194,7 +240,7 @@ const Advanced: React.FC<Props> = (props: Props) => {
             strokeOpacity: 0.6
           }}
         >
-          {node !== false && node.id !== "root" ? (
+          {node !== false && node.title !== "root" ? (
             <LabelSeries
               data={[
                 {

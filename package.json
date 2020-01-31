@@ -17,11 +17,14 @@
     "typescript": "^3.7.5"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "homepage": "https://keita-makino.github.io/ecs272-2020-3",
   "eslintConfig": {
     "extends": "react-app"
   },
@@ -51,6 +54,7 @@
     "eslint-config-prettier": "^6.10.0",
     "eslint-plugin-prettier": "^3.1.2",
     "framer-motion": "^1.8.3",
+    "gh-pages": "^2.2.0",
     "graphql": "^14.6.0",
     "husky": "^4.2.1",
     "license-checker": "^25.0.1",
@@ -62,5 +66,21 @@
     "react-use": "^13.22.4",
     "react-vis": "^1.11.7",
     "react-vis-types": "0.0.6"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": [
+        "lint-staged && node license/exportStatements && git add license/."
+      ]
+    }
+  },
+  "lint-staged": {
+    "./**/*.{js,ts,jsx,tsx}": [
+      "eslint"
+    ],
+    "./**/*.{js,ts,jsx,tsx,json,md}": [
+      "prettier --write",
+      "git add"
+    ]
   }
 }

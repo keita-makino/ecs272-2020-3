@@ -4,7 +4,6 @@ import { HexagonLayer } from "@deck.gl/aggregation-layers";
 import StaticMap from "react-map-gl";
 import { useQuery, useApolloClient } from "@apollo/react-hooks";
 import { gql } from "apollo-boost";
-import rawData from "../data/data.json";
 import lightingEffect from "../utils/lightingEffect";
 import { makeStyles, Box, Grid, Typography, Slider } from "@material-ui/core";
 import Selector from "./Selector";

@@ -7,7 +7,7 @@ import { ApolloProvider } from "@apollo/react-hooks";
 import { InMemoryCache } from "apollo-cache-inmemory";
 import Basic from "./components/Basic";
 
-import data from "./data/data2.json";
+import data from "./data/data.json";
 import { makeStyles, AppBar, Grid, Typography, Box } from "@material-ui/core";
 
 const cache = new InMemoryCache();
@@ -136,6 +136,11 @@ const App: React.FC = () => {
                 hovered over, and the "path" which represents the current
                 condition. The reset button will re-initialize the state of the
                 visualization, including the first one.
+              </Typography>
+              <br />
+              <Typography variant={"body1"}>
+                Note that, if there are more than 25 unique values in each
+                category, the app will omit the less-frequent categories.
               </Typography>
             </Box>
             <Box width={"1280px"}>
