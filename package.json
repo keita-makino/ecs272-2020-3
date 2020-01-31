@@ -59,6 +59,7 @@
     "prettier": "^1.19.1",
     "react-map-gl": "^5.2.1",
     "react-select": "^3.0.8",
+    "react-use": "^13.22.4",
     "react-vis": "^1.11.7",
     "react-vis-types": "0.0.6"
   }

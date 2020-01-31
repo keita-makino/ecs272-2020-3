@@ -2,14 +2,14 @@ import React, { useState } from "react";
 import DeckGL from "@deck.gl/react";
 import { HexagonLayer } from "@deck.gl/aggregation-layers";
 import StaticMap from "react-map-gl";
-import { useQuery } from "@apollo/react-hooks";
+import { useQuery, useApolloClient } from "@apollo/react-hooks";
 import { gql } from "apollo-boost";
 import rawData from "../data/data.json";
-import lightingEffect from "./lightingEffect";
-import { makeStyles, Box, Grid, Typography } from "@material-ui/core";
+import lightingEffect from "../utils/lightingEffect";
+import { makeStyles, Box, Grid, Typography, Slider } from "@material-ui/core";
 import Selector from "./Selector";
 
-type Props = {};
+type Props = { data: any[] };
 
 const query = gql`
   query @client {
@@ -48,6 +48,7 @@ const useStyles = makeStyles({
 });
 
 const Basic: React.FC<Props> = (props: Props) => {
+  const client = useApolloClient();
   const classes = useStyles();
   const MAPBOX_TOKEN =
     "pk.eyJ1Ijoia2VtYWtpbm8iLCJhIjoiY2s1aHJkeWVpMDZzbDNubzltem80MGdnZSJ9.Mn_8DItICHFJyiPJ2rP_0Q";
@@ -58,16 +59,18 @@ const Basic: React.FC<Props> = (props: Props) => {
     pointerY: 0
   });
 
+  const [threshold, setThreshold] = useState(100);
+
   const { data } = useQuery(query);
   const plotData =
     data.z.value === ""
-      ? rawData.map(item => ({ lat: item.Y, lng: item.X }))
-      : rawData
+      ? props.data.map(item => ({ lat: Number(item.Y), lng: Number(item.X) }))
+      : props.data
           .filter(
             item =>
-              item[data.x.value as keyof typeof rawData[0]] === data.z.value
+              item[data.x.value as keyof typeof props.data[0]] === data.z.value
           )
-          .map(item => ({ lat: item.Y, lng: item.X }));
+          .map(item => ({ lat: Number(item.Y), lng: Number(item.X) }));
 
   const [view, setView] = React.useState({
     latitude: 37.74,
@@ -87,6 +90,23 @@ const Basic: React.FC<Props> = (props: Props) => {
       });
   };
 
+  const onClick = () => {
+    if (data.x.value !== "" && data.z.value !== "") {
+      client.writeData({
+        data: {
+          xt: {
+            value: data.x.value !== "" ? data.x.value : "",
+            __typename: "selection"
+          },
+          zt: {
+            value: data.z.value !== "" ? data.z.value : "",
+            __typename: "selection"
+          }
+        }
+      });
+    }
+  };
+
   const hexagon = new HexagonLayer({
     id: "heatmap",
     colorRange,
@@ -98,10 +118,15 @@ const Basic: React.FC<Props> = (props: Props) => {
     extruded: true,
     getPosition: (obj: { lng: any; lat: any }) => [obj.lng, obj.lat],
     radius: 100,
-    upperPercentile: 100,
+    upperPercentile: threshold,
     material: material,
-    onHover: onHover
+    onHover: onHover,
+    onClick: onClick
   });
+
+  const handleChange = (_event: any, value: any) => {
+    setThreshold(value);
+  };
 
   return (
     <Box className={classes.map}>
@@ -141,12 +166,22 @@ const Basic: React.FC<Props> = (props: Props) => {
         style={{ position: "absolute", width: "240px", margin: "20px" }}
       >
         <Typography style={{ color: "white" }}>Category</Typography>
-        <Selector target={"x"} />
+        <Selector data={props.data} target={"x"} />
         <br />
         <Typography style={{ color: "white" }}>Value</Typography>
         <Selector
+          data={props.data}
           target={"z"}
           category={data.x.value !== "" ? data.x.value : undefined}
+        />
+        <br />
+        <Typography style={{ color: "white" }}>Remove Outliers</Typography>
+        <Slider
+          defaultValue={100}
+          max={100}
+          min={80}
+          onChange={handleChange}
+          style={{ color: "#FFF2CC", width: "240px" }}
         />
       </Grid>
     </Box>
