@@ -24,19 +24,34 @@ const query = gql`
 
 const Advanced: React.FC<Props> = (props: Props) => {
   const { data } = useQuery(query);
-  console.log(data);
   const [tooltip, setTooltip] = useState("");
 
   const nestedData = NestHydrationJS().nest(
-    rawData.map((item: any) => ({
-      _title: item[data.x.value],
-      _color: "#12939A",
-      _children__title: item[data.y.value],
-      _children__color: "#2c3fc9",
-      _children__children__title: item.IncidntNum,
-      _children__children__size: 1,
-      _children__children__treeEnd: true
-    }))
+    rawData.map((item: any) => {
+      if (data.x.value === "") {
+        return;
+      }
+      let r: any = {
+        _title: item[data.x.value]
+      };
+      if (data.y.value === "") {
+        r = {
+          ...r,
+          _children__title: item.IncidntNum,
+          _children__size: 1,
+          _children__treeEnd: true
+        };
+        return r;
+      }
+      r = {
+        ...r,
+        _children__title: data.y.value === "" ? undefined : item[data.y.value],
+        _children__children__title: item.IncidntNum,
+        _children__children__size: 1,
+        _children__children__treeEnd: true
+      };
+      return r;
+    })
   );
 
   const getFreqency = (item: any) => {
@@ -47,6 +62,9 @@ const Advanced: React.FC<Props> = (props: Props) => {
   };
 
   const aggregate = (item: any) => {
+    if (item === null) {
+      return;
+    }
     let r;
     if (item[0].children[0].size !== undefined) {
       if (item[0].children[0].treeEnd === true) {
@@ -72,29 +90,33 @@ const Advanced: React.FC<Props> = (props: Props) => {
     return r;
   };
 
-  const getColor = (str: string) => {
-    const hue = (str.charCodeAt(0) * 255) % 360;
+  const getColor = (str: string | number) => {
+    const hue = (str.toString().charCodeAt(0) * 255) % 360;
     return `hsl(${hue}, 90%, 70%)`;
   };
 
   let freqData = aggregate(nestedData);
   // while (freqData[0].size === undefined) freqData = aggregate(freqData);
-
   const plotData = {
     title: "root",
-    size: freqData.reduce((prev: number, curr: any) => prev + curr.size, 0),
+    size:
+      data.y.value !== ""
+        ? freqData.reduce((prev: number, curr: any) => prev + curr.size, 0)
+        : undefined,
     children: freqData
   };
+
+  const onValueMouseOver = (node: any) => {};
 
   return (
     <Grid container>
       <Sunburst
         animation
-        hideRootNode
         data={plotData}
         width={1280}
         height={720}
         padAngle={0.005}
+        onValueMouseOver={onValueMouseOver}
       />
       <Grid
         container

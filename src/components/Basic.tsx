@@ -6,7 +6,8 @@ import { useQuery } from "@apollo/react-hooks";
 import { gql } from "apollo-boost";
 import rawData from "../data/data.json";
 import lightingEffect from "./lightingEffect";
-import { makeStyles, Box } from "@material-ui/core";
+import { makeStyles, Box, Grid, Typography } from "@material-ui/core";
+import Selector from "./Selector";
 
 type Props = {};
 
@@ -16,7 +17,7 @@ const query = gql`
       value
       __typename
     }
-    y {
+    z {
       value
       __typename
     }
@@ -41,7 +42,8 @@ const colorRange = [
 
 const useStyles = makeStyles({
   map: {
-    position: "relative"
+    position: "relative",
+    height: "720px"
   }
 });
 
@@ -57,7 +59,15 @@ const Basic: React.FC<Props> = (props: Props) => {
   });
 
   const { data } = useQuery(query);
-  const plotData = rawData.map(item => ({ lat: item.Y, lng: item.X }));
+  const plotData =
+    data.z.value === ""
+      ? rawData.map(item => ({ lat: item.Y, lng: item.X }))
+      : rawData
+          .filter(
+            item =>
+              item[data.x.value as keyof typeof rawData[0]] === data.z.value
+          )
+          .map(item => ({ lat: item.Y, lng: item.X }));
 
   const [view, setView] = React.useState({
     latitude: 37.74,
@@ -125,6 +135,20 @@ const Basic: React.FC<Props> = (props: Props) => {
           </div>
         ) : null}
       </DeckGL>
+      <Grid
+        container
+        direction={"column"}
+        style={{ position: "absolute", width: "240px", margin: "20px" }}
+      >
+        <Typography style={{ color: "white" }}>Category</Typography>
+        <Selector target={"x"} />
+        <br />
+        <Typography style={{ color: "white" }}>Value</Typography>
+        <Selector
+          target={"z"}
+          category={data.x.value !== "" ? data.x.value : undefined}
+        />
+      </Grid>
     </Box>
   );
 };

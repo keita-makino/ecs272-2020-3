@@ -19,18 +19,21 @@ const Selector: React.FC<SelectorProps> = props => {
     });
   };
 
-  const options = props.category
-    ? data
-        .map(item => item[props.category! as keyof typeof data[0]])
-        .map(item => ({
+  const options =
+    props.category !== undefined
+      ? data
+          .map(item => item[props.category! as keyof typeof data[0]])
+          .reduce((prev: any, curr: any, index: any) => {
+            return prev.indexOf(curr) > -1 ? prev : [...prev, curr];
+          }, [])
+          .map((item: any) => ({
+            value: item,
+            label: item
+          }))
+      : Object.keys(data[0]).map(item => ({
           value: item,
           label: item
-        }))
-        .filter((value, index, self) => self.indexOf(value) === index)
-    : Object.keys(data[0]).map(item => ({
-        value: item,
-        label: item
-      }));
+        }));
 
   return (
     <React.Fragment>

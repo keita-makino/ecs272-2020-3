@@ -12,8 +12,9 @@ const client = new ApolloClient({ cache });
 
 cache.writeData({
   data: {
-    x: { value: "Category", __typename: "selection" },
-    y: { value: "DayOfWeek", __typename: "selection" }
+    x: { value: "", __typename: "selection" },
+    y: { value: "", __typename: "selection" },
+    z: { value: "", __typename: "selection" }
   }
 });
 
@@ -21,8 +22,8 @@ const App: React.FC = () => {
   return (
     <div className="App">
       <ApolloProvider client={client}>
-        <Advanced />
         <Basic />
+        <Advanced />
       </ApolloProvider>
     </div>
   );
